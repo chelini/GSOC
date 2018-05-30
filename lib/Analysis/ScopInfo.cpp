@@ -689,6 +689,7 @@ isl::id MemoryAccess::getLatestArrayId() const {
 }
 
 isl::map MemoryAccess::getAddressFunction() const {
+  //DEBUG(dbgs() << "getAddressFun :=" << getAccessRelation().lexmin() << "\n");
   return getAccessRelation().lexmin();
 }
 
@@ -698,9 +699,13 @@ MemoryAccess::applyScheduleToAccessRelation(isl::union_map USchedule) const {
   isl::union_set UDomain;
 
   UDomain = getStatement()->getDomain();
+  //DEBUG(dbgs() << "UDomain :=" << UDomain << "\n");
   USchedule = USchedule.intersect_domain(UDomain);
+  //DEBUG(dbgs() << "Uschedule := " << USchedule << "\n");
   Schedule = isl::map::from_union_map(USchedule);
+  //DEBUG(dbgs() << "Schedule :=" << Schedule << "\n");
   ScheduledAccRel = getAddressFunction().apply_domain(Schedule);
+  //DEBUG(dbgs() << "ScheduleAccRel :=" << ScheduledAccRel <<"\n");
   return isl::pw_multi_aff::from_map(ScheduledAccRel);
 }
 
@@ -1144,19 +1149,31 @@ static isl::map getEqualAndLarger(isl::space SetDomain) {
 }
 
 isl::set MemoryAccess::getStride(isl::map Schedule) const {
+  DEBUG(dbgs() << "******************\n");
+  DEBUG(dbgs() << "Schedule :=" << Schedule <<"\n");
   isl::map AccessRelation = getAccessRelation();
+  DEBUG(dbgs() << "AccessRelation :=" << AccessRelation <<"\n");
   isl::space Space = Schedule.get_space().range();
+  DEBUG(dbgs() << "Space :=" << Space << "\n");
   isl::map NextScatt = getEqualAndLarger(Space);
+  DEBUG(dbgs() << "NextScatt :=" << NextScatt << "\n");
 
   Schedule = Schedule.reverse();
+  DEBUG(dbgs() << "Schedule :=" << Schedule <<"\n");
   NextScatt = NextScatt.lexmin();
+  DEBUG(dbgs() << "NextScatt :=" << NextScatt << "\n"); 
 
   NextScatt = NextScatt.apply_range(Schedule);
+  DEBUG(dbgs() << "NextScatt :=" << NextScatt << "\n");
   NextScatt = NextScatt.apply_range(AccessRelation);
+  DEBUG(dbgs() << "NextScatt := " << NextScatt << "\n");
   NextScatt = NextScatt.apply_domain(Schedule);
+  DEBUG(dbgs() << "NextScatt := " << NextScatt <<"\n");
   NextScatt = NextScatt.apply_domain(AccessRelation);
+  DEBUG(dbgs() << "NextScatt := " << NextScatt <<"\n");
 
   isl::set Deltas = NextScatt.deltas();
+  DEBUG(dbgs() << "Deltas" << Deltas << "\n");
   return Deltas;
 }
 
@@ -1166,14 +1183,58 @@ bool MemoryAccess::isStrideX(isl::map Schedule, int StrideWidth) const {
 
   Stride = getStride(Schedule);
   StrideX = isl::set::universe(Stride.get_space());
+  //DEBUG(dbgs() << "StrideX :=" << StrideX << "\n");
   for (unsigned i = 0; i < StrideX.dim(isl::dim::set) - 1; i++)
     StrideX = StrideX.fix_si(isl::dim::set, i, 0);
+  //DEBUG(dbgs() << "StrideX" << StrideX << "\n");
   StrideX = StrideX.fix_si(isl::dim::set, StrideX.dim(isl::dim::set) - 1,
                            StrideWidth);
+  //DEBUG(dbgs() << "StrideX" << StrideX << "\n");
   IsStrideX = Stride.is_subset(StrideX);
 
   return IsStrideX;
 }
+
+//Gsoc
+bool MemoryAccess::isStreamingAccess() const {
+  // 1 get the schedule.
+  isl::map Schedule = getStatement()->getSchedule();
+  // 2 get the stride.
+  isl::set Deltas = getStride(Schedule);
+  // check the stride inner most dim. is > 1.
+  isl::set StrideOne;
+  StrideOne = isl::set::universe(Deltas.get_space());
+  for(unsigned i=0; i < StrideOne.dim(isl::dim::set) -1; ++i)
+    StrideOne = StrideOne.fix_si(isl::dim::set, i, 0);
+  StrideOne = StrideOne.fix_si(isl::dim::set, StrideOne.dim(isl::dim::set) -1,
+  				1);
+  //DEBUG(dbgs() << "StrideOne :=" << StrideOne << "\n");
+  //DEBUG(dbgs() << "Deltas :=" << Deltas << "\n");
+  //DEBUG(dbgs() << "Deltas.is_subset(StrideOne)" << Deltas.is_subset(StrideOne) << "\n");
+  //DEBUG(dbgs() << "StrideOne.is_subset(Deltas)" << StrideOne.is_subset(Deltas) << "\n");
+  //DEBUG(dbgs() << "Sub" << Deltas.subtract(StrideOne) << "\n");
+  //DEBUG(dbgs() << "Lexax deltas :=" << Deltas.lexmax() << "\n");
+  //DEBUG(dbgs() << "Lexmax StrideOne :=" << StrideOne.lexmax() << "\n");
+  isl::local_space Ls = isl::local_space(Deltas.get_space());
+  isl::pw_aff ValD, ValO, InnerMaxD, InnerMaxO;
+  ValD = isl::aff::var_on_domain(Ls, isl::dim::set, Deltas.dim(isl::dim::set)-1);
+  ValO = isl::aff::var_on_domain(Ls, isl::dim::set, StrideOne.dim(isl::dim::set)-1);
+  InnerMaxD = Deltas.dim_max(Deltas.dim(isl::dim::set)-1);
+  InnerMaxO = StrideOne.dim_max(StrideOne.dim(isl::dim::set)-1);
+  InnerMaxD = InnerMaxD.add_dims(isl::dim::in, ValD.dim(isl::dim::in));
+  InnerMaxO = InnerMaxO.add_dims(isl::dim::in, ValO.dim(isl::dim::in));
+  //DEBUG(dbgs() << "InnerMaxD := " << InnerMaxD << "\n");
+  //DEBUG(dbgs() << "InnerMaxO := " << InnerMaxO << "\n");
+  //DEBUG(dbgs() << isl::map::from_pw_aff(InnerMaxD) << "\n");
+  InnerMaxD = InnerMaxD.sub(InnerMaxO);
+  //DEBUG(dbgs() << "InnerMaxD :=" << InnerMaxD << "\n");
+  //isl::set dummy = InnerMaxD.gt_set(InnerMaxO);
+  //isl::val VV = getC(InnerMaxD);
+  isl::val VV = getConstant(InnerMaxD, true, false);
+  //DEBUG(dbgs() << VV.to_str() << "\n");
+  return VV.is_nonneg();
+}
+
 
 bool MemoryAccess::isStrideZero(isl::map Schedule) const {
   return isStrideX(Schedule, 0);
@@ -1250,6 +1311,7 @@ isl::map ScopStmt::getSchedule() const {
   if (Domain.is_empty())
     return isl::map::from_aff(isl::aff(isl::local_space(getDomainSpace())));
   auto Schedule = getParent()->getSchedule();
+  DEBUG(dbgs() << "Schedule@: " << Schedule << "\n");
   if (!Schedule)
     return nullptr;
   Schedule = Schedule.intersect_domain(isl::union_set(Domain));

@@ -423,6 +423,9 @@ public:
   /// @returns True, if the arrays are compatible, False otherwise.
   bool isCompatibleWith(const ScopArrayInfo *Array) const;
 
+  /// return the Scop for this SAI.
+  Scop *getScop() const { return &S; }
+
 private:
   void addDerivedSAI(ScopArrayInfo *DerivedSAI) {
     DerivedSAIs.insert(DerivedSAI);
@@ -976,6 +979,9 @@ public:
   /// dimension is the dimension of the innermost loop containing the
   /// statement.
   bool isStrideZero(isl::map Schedule) const;
+
+  /// Check if the current memory access is a streaming.
+  bool isStreamingAccess() const;
 
   /// Return the kind when this access was first detected.
   MemoryKind getOriginalKind() const {

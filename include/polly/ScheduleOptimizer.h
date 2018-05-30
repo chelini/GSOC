@@ -20,6 +20,29 @@ class TargetTransformInfo;
 
 struct isl_schedule_node;
 
+/// GsoC
+/// Parameters for the classification algorithm.
+struct Reference {
+  unsigned AccessType;
+  std::string Name;
+  std::vector<isl::val> ElementAccessed;
+  std::vector<isl::val> Step; 
+  isl::set Domain;
+
+  enum ReferenceType {
+    SINGLE_ELEMENT,
+    CHUNKS,
+    NEIGHBOURHOODS,
+    FULL,
+    SHARED,
+  }type;  
+
+  Reference() {}
+  ~Reference() {} 
+};
+std::vector<Reference> References;
+
+
 /// Parameters of the micro kernel.
 ///
 /// Parameters, which determine sizes of rank-1 (i.e., outer product) update
