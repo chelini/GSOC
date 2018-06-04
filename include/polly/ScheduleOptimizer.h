@@ -26,16 +26,17 @@ struct Reference {
   unsigned AccessType;
   std::string Name;
   std::vector<isl::val> ElementAccessed;
-  std::vector<isl::val> Step; 
+  std::vector<bool> HasStride; 
   isl::set Domain;
+  std::vector<unsigned> LoopOrder;
 
   enum ReferenceType {
     SINGLE_ELEMENT,
-    CHUNKS,
-    NEIGHBOURHOODS,
+    CHUNK,
+    NEIGHBOURHOOD,
     FULL,
     SHARED,
-  }type;  
+  }Type;  
 
   Reference() {}
   ~Reference() {} 

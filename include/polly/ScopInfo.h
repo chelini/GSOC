@@ -981,7 +981,7 @@ public:
   bool isStrideZero(isl::map Schedule) const;
 
   /// Check if the current memory access is a streaming.
-  bool isStreamingAccess() const;
+  //bool isStreamingAccess() const;
 
   /// Return the kind when this access was first detected.
   MemoryKind getOriginalKind() const {

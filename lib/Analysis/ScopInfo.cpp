@@ -1183,19 +1183,20 @@ bool MemoryAccess::isStrideX(isl::map Schedule, int StrideWidth) const {
 
   Stride = getStride(Schedule);
   StrideX = isl::set::universe(Stride.get_space());
-  //DEBUG(dbgs() << "StrideX :=" << StrideX << "\n");
+  DEBUG(dbgs() << "StrideX :=" << StrideX << "\n");
   for (unsigned i = 0; i < StrideX.dim(isl::dim::set) - 1; i++)
     StrideX = StrideX.fix_si(isl::dim::set, i, 0);
-  //DEBUG(dbgs() << "StrideX" << StrideX << "\n");
+  DEBUG(dbgs() << "StrideX" << StrideX << "\n");
   StrideX = StrideX.fix_si(isl::dim::set, StrideX.dim(isl::dim::set) - 1,
                            StrideWidth);
-  //DEBUG(dbgs() << "StrideX" << StrideX << "\n");
+  DEBUG(dbgs() << "StrideX" << StrideX << "\n");
   IsStrideX = Stride.is_subset(StrideX);
 
   return IsStrideX;
 }
 
 //Gsoc
+/*
 bool MemoryAccess::isStreamingAccess() const {
   // 1 get the schedule.
   isl::map Schedule = getStatement()->getSchedule();
@@ -1234,7 +1235,7 @@ bool MemoryAccess::isStreamingAccess() const {
   //DEBUG(dbgs() << VV.to_str() << "\n");
   return VV.is_nonneg();
 }
-
+*/
 
 bool MemoryAccess::isStrideZero(isl::map Schedule) const {
   return isStrideX(Schedule, 0);
