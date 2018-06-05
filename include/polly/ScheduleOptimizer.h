@@ -26,7 +26,7 @@ struct Reference {
   unsigned AccessType;
   std::string Name;
   std::vector<isl::val> ElementAccessed;
-  std::vector<bool> HasStride; 
+  std::vector<bool> HasStride;
   isl::set Domain;
   std::vector<unsigned> LoopOrder;
 
@@ -36,13 +36,16 @@ struct Reference {
     NEIGHBOURHOOD,
     FULL,
     SHARED,
-  }Type;  
+  } Type;
 
   Reference() {}
-  ~Reference() {} 
+  ~Reference() {}
 };
-std::vector<Reference> References;
 
+struct Skeleton {
+  std::vector<Reference> References;
+  const char *StmtBaseName;
+};
 
 /// Parameters of the micro kernel.
 ///
@@ -71,11 +74,20 @@ class Scop;
 
 /// Additional parameters of the schedule optimizer.
 ///
+/// Classification plus dependencies.
+//struct Skeletons {
+  //std::vector<Skeleton> SkeletonArray;
+  //const Dependences *D;
+//};
+
+/// Additional parameters of the schedule optimizer.
+///
 /// Target Transform Info and the SCoP dependencies used by the schedule
 /// optimizer.
 struct OptimizerAdditionalInfoTy {
   const llvm::TargetTransformInfo *TTI;
   const Dependences *D;
+  const std::vector<Skeleton> &Skeletons;
 };
 
 /// Parameters of the matrix multiplication operands.

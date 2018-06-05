@@ -669,7 +669,8 @@ static bool isMatMulNonScalarReadAccess(MemoryAccess *MemAccess,
     MMI.B = MemAccess;
     return true;
   }
-  DEBUG(dbgs() << "exit" << "\n");
+  DEBUG(dbgs() << "exit"
+               << "\n");
   return false;
 }
 
@@ -701,14 +702,14 @@ static bool containsOnlyMatrMultAcc(isl::map PartialSchedule,
   auto MapK =
       permuteDimensions(PartialSchedule, isl::dim::out, MMI.k, OutDimNum - 1);
 
-  //DEBUG(dbgs() << "MApi" << MapI << "\n");
-  //DEBUG(dbgs() << "Mapj" << MapJ << "\n");
-  //DEBUG(dbgs() << "Mapk" << MapK << "\n");
+  // DEBUG(dbgs() << "MApi" << MapI << "\n");
+  // DEBUG(dbgs() << "Mapj" << MapJ << "\n");
+  // DEBUG(dbgs() << "Mapk" << MapK << "\n");
 
   auto Accesses = getAccessesInOrder(*Stmt);
   for (auto *MemA = Accesses.begin(); MemA != Accesses.end() - 1; MemA++) {
     auto *MemAccessPtr = *MemA;
-    //DEBUG(dbgs() << MemAccessPtr->isStrideZero(MapI) << "\n");
+    // DEBUG(dbgs() << MemAccessPtr->isStrideZero(MapI) << "\n");
     if (MemAccessPtr->isLatestArrayKind() && MemAccessPtr != MMI.WriteToC &&
         !isMatMulNonScalarReadAccess(MemAccessPtr, MMI) &&
         !(MemAccessPtr->isStrideZero(MapI)) &&
@@ -1347,10 +1348,9 @@ DomainStmt.dim(isl::dim::param)); DEBUG(dbgs() << "d :=" << d << "\n");
 }
 */
 
-
 static void getDomain(MemoryAccess *MemAcc, isl::set &Ext) {
 
-  auto ArrayInfo = MemAcc->getLatestScopArrayInfo(); 
+  auto ArrayInfo = MemAcc->getLatestScopArrayInfo();
   unsigned NumDims = ArrayInfo->getNumberOfDimensions();
 
   if (NumDims == 0)
@@ -1359,11 +1359,11 @@ static void getDomain(MemoryAccess *MemAcc, isl::set &Ext) {
   Scop *S = ArrayInfo->getScop();
   isl::union_map Accesses = S->getAccesses();
   isl::union_map sched = ArrayInfo->getScop()->getSchedule();
-  //DEBUG(dbgs() << "Sched :=" << sched << "\n");
-  //DEBUG(dbgs() << "Accesses :=" << Accesses << "\n");
+  // DEBUG(dbgs() << "Sched :=" << sched << "\n");
+  // DEBUG(dbgs() << "Accesses :=" << Accesses << "\n");
   Accesses = Accesses.apply_domain(sched);
   isl::union_set AccessRange = Accesses.range();
-  //DEBUG(dbgs() << "Accesses Range :=" << AccessRange <<"\n");
+  // DEBUG(dbgs() << "Accesses Range :=" << AccessRange <<"\n");
   // simplify range.
   AccessRange = AccessRange.coalesce();
   AccessRange = AccessRange.detect_equalities();
@@ -1373,61 +1373,60 @@ static void getDomain(MemoryAccess *MemAcc, isl::set &Ext) {
     Ext = isl::set::empty(ArrayInfo->getSpace());
 
   isl::set AccessSet = AccessRange.extract_set(ArrayInfo->getSpace());
-  //DEBUG(dbgs() << "AccessSet in Domain :=" << AccessSet << "\n");
+  // DEBUG(dbgs() << "AccessSet in Domain :=" << AccessSet << "\n");
   isl::local_space LS = isl::local_space(ArrayInfo->getSpace());
   isl::set Extent = isl::set::universe(ArrayInfo->getSpace());
 
   for (unsigned i = 0; i < NumDims; ++i) {
     isl::pw_aff Val = isl::aff::var_on_domain(LS, isl::dim::set, i);
-    //DEBUG(dbgs() << "val :=" << Val << "\n");
+    // DEBUG(dbgs() << "val :=" << Val << "\n");
     isl::pw_aff OuterMin = AccessSet.dim_min(i);
-    //DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
+    // DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
     isl::pw_aff OuterMax = AccessSet.dim_max(i);
-    //DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
+    // DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
     OuterMin = OuterMin.add_dims(isl::dim::in, Val.dim(isl::dim::in));
-    //DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
+    // DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
     OuterMax = OuterMax.add_dims(isl::dim::in, Val.dim(isl::dim::in));
-    //DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
+    // DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
     OuterMin = OuterMin.set_tuple_id(isl::dim::in, ArrayInfo->getBasePtrId());
-    //DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
+    // DEBUG(dbgs() << "OuterMin :=" << OuterMin << "\n");
     OuterMax = OuterMax.set_tuple_id(isl::dim::in, ArrayInfo->getBasePtrId());
-    //DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
+    // DEBUG(dbgs() << "OuterMax :=" << OuterMax << "\n");
     Extent = Extent.intersect(OuterMin.le_set(Val));
-    //DEBUG(dbgs() << "Extent :=" << Extent << "\n");
+    // DEBUG(dbgs() << "Extent :=" << Extent << "\n");
     Extent = Extent.intersect(OuterMax.ge_set(Val));
-    //DEBUG(dbgs() << "Extent :=" << Extent << "\n");
+    // DEBUG(dbgs() << "Extent :=" << Extent << "\n");
     Ext = Extent;
     // TODO: from here you can compute the total
     // number of accessed element. look at pw_aff_sub
   }
-/*
-    for (unsigned i = 1; i < NumDims; ++i)
-      Extent = Extent.lower_bound_si(isl::dim::set, i, 0);
-    DEBUG(dbgs() << "Extent :=" << Extent << "\n");
+  /*
+      for (unsigned i = 1; i < NumDims; ++i)
+        Extent = Extent.lower_bound_si(isl::dim::set, i, 0);
+      DEBUG(dbgs() << "Extent :=" << Extent << "\n");
 
-    for (unsigned i = 0; i < NumDims; ++i) {
-      isl::pw_aff PwAff = ArrayInfo->getDimensionSizePw(i);
-      DEBUG(dbgs() << "PwAff :=" << PwAff << "\n");
+      for (unsigned i = 0; i < NumDims; ++i) {
+        isl::pw_aff PwAff = ArrayInfo->getDimensionSizePw(i);
+        DEBUG(dbgs() << "PwAff :=" << PwAff << "\n");
 
-      // isl_pw_aff can be NULL for zero dimension. Only in the case of a
-      // Fortran array will we have a legitimate dimension.
-      if (PwAff.is_null()) {
-        assert(i == 0 && "invalid dimension isl_pw_aff for nonzero dimension");
-        continue;
+        // isl_pw_aff can be NULL for zero dimension. Only in the case of a
+        // Fortran array will we have a legitimate dimension.
+        if (PwAff.is_null()) {
+          assert(i == 0 && "invalid dimension isl_pw_aff for nonzero
+     dimension"); continue;
+        }
+
+        isl::pw_aff Val = isl::aff::var_on_domain(
+          isl::local_space(ArrayInfo->getSpace()), isl::dim::set, i);
+        DEBUG(dbgs() << "Val :=" << Val << "\n");
+        PwAff = PwAff.add_dims(isl::dim::in, Val.dim(isl::dim::in));
+        DEBUG(dbgs() << "PwAff :=" << PwAff << "\n");
+        PwAff = PwAff.set_tuple_id(isl::dim::in,
+     Val.get_tuple_id(isl::dim::in)); DEBUG(dbgs() << "PwAff :=" << PwAff <<
+     "\n"); isl::set Set = PwAff.gt_set(Val); DEBUG(dbgs() << "Set :=" << Set <<
+     "\n"); Ext = Set.intersect(Extent);
       }
-
-      isl::pw_aff Val = isl::aff::var_on_domain(
-        isl::local_space(ArrayInfo->getSpace()), isl::dim::set, i);
-      DEBUG(dbgs() << "Val :=" << Val << "\n");
-      PwAff = PwAff.add_dims(isl::dim::in, Val.dim(isl::dim::in));
-      DEBUG(dbgs() << "PwAff :=" << PwAff << "\n");
-      PwAff = PwAff.set_tuple_id(isl::dim::in, Val.get_tuple_id(isl::dim::in));
-      DEBUG(dbgs() << "PwAff :=" << PwAff << "\n");
-      isl::set Set = PwAff.gt_set(Val);
-      DEBUG(dbgs() << "Set :=" << Set << "\n");
-      Ext = Set.intersect(Extent);
-    }
-*/
+  */
 }
 
 /*
@@ -1463,7 +1462,6 @@ static void computeArrayBounds(std::vector<isl::pw_aff> &B, isl::set &E,
 }
 */
 
-
 /// Derive the extent of an array.
 ///
 /// The extent of an array is the set of elements that are within the
@@ -1482,7 +1480,7 @@ isl::set getExtent(MemoryAccess *MemAcc) {
   if (Array->getNumberOfDimensions() == 0)
     return isl::set::universe(Array->getSpace());
   Scop *S = Array->getScop();
-  isl::union_map Accesses = S->getAccesses(const_cast<ScopArrayInfo*>(Array));
+  isl::union_map Accesses = S->getAccesses(const_cast<ScopArrayInfo *>(Array));
   isl::union_set AccessUSet = Accesses.range();
   AccessUSet = AccessUSet.coalesce();
   AccessUSet = AccessUSet.detect_equalities();
@@ -1671,28 +1669,29 @@ void computeBounds(std::vector<isl::pw_aff> Bounds, isl::set &Extent,
 /// At the moment I am not able to quantify the step.
 /// so we push a '1' if we detect a step along one loop dimension, 0 otherwise.
 
-static void getStep(MemoryAccess *MemAcc, isl::map &Sched, 
-		/*unsigned LoopLevel,*/ std::vector<bool>& HasStride) {
+static void getStep(MemoryAccess *MemAcc, isl::map &Sched,
+                    /*unsigned LoopLevel,*/ std::vector<bool> &HasStride) {
 
   unsigned DimNumOut = Sched.dim(isl::dim::out);
   unsigned StrideDetected = false;
-  for(unsigned uu = 0; uu < DimNumOut; uu++) {
+  for (unsigned uu = 0; uu < DimNumOut; uu++) {
     StrideDetected = false;
     // the loop for which you want to compute the step
     // should be the innermost one.
-    isl::map NewSched = permuteDimensions(Sched, isl::dim::out, uu, DimNumOut-1);
+    isl::map NewSched =
+        permuteDimensions(Sched, isl::dim::out, uu, DimNumOut - 1);
     isl::set Deltas = MemAcc->getStride(NewSched);
     isl::pw_multi_aff MultAff = isl::pw_multi_aff::from_set(Deltas);
-    if(MultAff.n_piece() == 0)
+    if (MultAff.n_piece() == 0)
       continue;
-    if(MultAff.n_piece() > 1)
+    if (MultAff.n_piece() > 1)
       continue;
     DEBUG(dbgs() << MultAff << "\n");
-    for(unsigned u = 0; u < MultAff.dim(isl::dim::out); ++u) {
+    for (unsigned u = 0; u < MultAff.dim(isl::dim::out); ++u) {
       isl::pw_aff PwAff = MultAff.get_pw_aff(u);
       PwAff.foreach_piece([&](isl::set S, isl::aff Aff) -> isl::stat {
         isl::val Val = Aff.get_constant_val();
-        if(!Val.is_zero()) {
+        if (!Val.is_zero()) {
           DEBUG(dbgs() << "Stride on dimension :" << uu << "\n");
           HasStride.push_back(true);
           StrideDetected = true;
@@ -1700,10 +1699,11 @@ static void getStep(MemoryAccess *MemAcc, isl::map &Sched,
         return isl::stat::ok;
       });
     }
-    if(!StrideDetected)
+    if (!StrideDetected)
       HasStride.push_back(false);
   }
-  DEBUG(dbgs() << "****" << "\n");
+  DEBUG(dbgs() << "****"
+               << "\n");
 }
 
 /// find relative index order + compute element accessed.
@@ -1713,48 +1713,50 @@ static void getStep(MemoryAccess *MemAcc, isl::map &Sched,
 /// 3. the access is not dependent on any loops
 
 static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
-            isl::set &AccessSet, std::vector<isl::val> &ElementAccessed,
-            std::vector<unsigned> &LoopOrder) {
- 
-  //DEBUG(dbgs() << "Schedule" << Sched << "\n");
-  //DEBUG(dbgs() << "Domain" << MemAcc->getStatement()->getDomain() << "\n");
-  //DEBUG(dbgs() << "AccesSet" << AccessSet << "\n"); 
+                               isl::set &AccessSet,
+                               std::vector<isl::val> &ElementAccessed,
+                               std::vector<unsigned> &LoopOrder) {
+
+  // DEBUG(dbgs() << "Schedule" << Sched << "\n");
+  // DEBUG(dbgs() << "Domain" << MemAcc->getStatement()->getDomain() << "\n");
+  // DEBUG(dbgs() << "AccesSet" << AccessSet << "\n");
   isl::map AccMap = MemAcc->getLatestAccessRelation();
-  //isl:: pw_multi_aff MultiAff = MemAcc->applyScheduleToAccessRelation(Sched);
-  //DEBUG(dbgs() << "MultiAff" << MultiAff << "\n");
+  // isl:: pw_multi_aff MultiAff = MemAcc->applyScheduleToAccessRelation(Sched);
+  // DEBUG(dbgs() << "MultiAff" << MultiAff << "\n");
   AccMap = AccMap.intersect_domain(MemAcc->getStatement()->getDomain());
   isl::pw_multi_aff MultiAff = isl::pw_multi_aff::from_map(AccMap);
-  //DEBUG(dbgs() << "MultiAff" << isl::pw_multi_aff::from_map(AccMap) << "\n");
+  // DEBUG(dbgs() << "MultiAff" << isl::pw_multi_aff::from_map(AccMap) << "\n");
   unsigned IndexAccessMap = 0;
-  //DEBUG(dbgs() << "AccMap" << AccMap << "\n");
-  //DEBUG(dbgs() << "AccMapDim" << AccMap.dim(isl::dim::out) << "\n");
-  //MultiAff = MultiAff.drop_dims(isl::dim::in, 0, 2);
-  //DEBUG(dbgs() << "MultiAff" << MultiAff << "\n");
-  for(unsigned u = 0; u < AccMap.dim(isl::dim::out); ++u) {
+  // DEBUG(dbgs() << "AccMap" << AccMap << "\n");
+  // DEBUG(dbgs() << "AccMapDim" << AccMap.dim(isl::dim::out) << "\n");
+  // MultiAff = MultiAff.drop_dims(isl::dim::in, 0, 2);
+  // DEBUG(dbgs() << "MultiAff" << MultiAff << "\n");
+  for (unsigned u = 0; u < AccMap.dim(isl::dim::out); ++u) {
     isl::pw_aff PwAff = MultiAff.get_pw_aff(u);
     PwAff.foreach_piece([&](isl::set S, isl::aff Aff) -> isl::stat {
       bool Relate = false;
-      //DEBUG(dbgs() << "AFF" << Aff << "\n");
-      //DEBUG(dbgs() << PwAff.domain() << "\n");
-      for(unsigned LoopDim = 0; LoopDim < AccMap.dim(isl::dim::in); ++LoopDim) {
-        isl::val V = Aff.get_coefficient_val(isl::dim::in,LoopDim);
-        if(!V.is_zero()) {
+      // DEBUG(dbgs() << "AFF" << Aff << "\n");
+      // DEBUG(dbgs() << PwAff.domain() << "\n");
+      for (unsigned LoopDim = 0; LoopDim < AccMap.dim(isl::dim::in);
+           ++LoopDim) {
+        isl::val V = Aff.get_coefficient_val(isl::dim::in, LoopDim);
+        if (!V.is_zero()) {
           isl::pw_aff OuterMin, OuterMax;
-          if(LoopDim == 0) {
-            //DEBUG(dbgs() << "dimension relates to outer loops" << "\n"); 
-            isl::local_space Ls = isl::local_space(AccessSet.get_space().params());
+          if (LoopDim == 0) {
+            // DEBUG(dbgs() << "dimension relates to outer loops" << "\n");
+            isl::local_space Ls =
+                isl::local_space(AccessSet.get_space().params());
             isl::aff One = isl::aff(Ls);
             One = One.add_constant_si(1);
             isl::val Val = One.get_constant_val();
             ElementAccessed.push_back(Val);
-          }
-          else {
-            //DEBUG(dbgs() << "dimension relates to inner loops" << "\n");
+          } else {
+            // DEBUG(dbgs() << "dimension relates to inner loops" << "\n");
             OuterMin = AccessSet.dim_min(IndexAccessMap);
             OuterMax = AccessSet.dim_max(IndexAccessMap);
             OuterMax = OuterMax.sub(OuterMin);
-            //DEBUG(dbgs() << "ELEM" << OuterMax << "\n");
-            //DEBUG(dbgs() << "LOOPDIM" << LoopDim << "\n");
+            // DEBUG(dbgs() << "ELEM" << OuterMax << "\n");
+            // DEBUG(dbgs() << "LOOPDIM" << LoopDim << "\n");
             /// create isl::val from isl::pw_aff
             assert(OuterMax.n_piece() == 1);
             OuterMax.foreach_piece([&](isl::set S, isl::aff Aff) -> isl::stat {
@@ -1768,26 +1770,28 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
           IndexAccessMap++;
         }
         // The dimension does not relate.
-        else if(V.is_zero()) {
-          if(!Relate && LoopDim == AccMap.dim(isl::dim::in)-1) {
-            //DEBUG(dbgs() << "found dimension that does not relate to any loop index\n");
-            isl::local_space Ls = isl::local_space(AccessSet.get_space().params());
+        else if (V.is_zero()) {
+          if (!Relate && LoopDim == AccMap.dim(isl::dim::in) - 1) {
+            // DEBUG(dbgs() << "found dimension that does not relate to any loop
+            // index\n");
+            isl::local_space Ls =
+                isl::local_space(AccessSet.get_space().params());
             isl::aff One = isl::aff(Ls);
             One = One.add_constant_si(1);
             isl::val Val = One.get_constant_val();
-	    ElementAccessed.push_back(Val);
+            ElementAccessed.push_back(Val);
           }
         }
       }
-    return isl::stat::ok;
+      return isl::stat::ok;
     });
   }
-  //DEBUG(dbgs() << "****" << "\n");
+  // DEBUG(dbgs() << "****" << "\n");
 }
 
 /*
-static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched, 
-        isl::set &AccessSet, std::vector<isl::val>& ElementAccessed, 
+static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
+        isl::set &AccessSet, std::vector<isl::val>& ElementAccessed,
         std::vector<unsigned>& LoopOrder) {
 
     //DEBUG(dbgs() << "&&&&&&&&&&&&&&&" << "\n");
@@ -1810,7 +1814,7 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
     //DEBUG(dbgs() << "AccessSet@" << AccessSet << "\n");
     //TODO: can we extract the Dom in a better way
     //isl::union_set Dom = MemAcc->getStatement()->getParent()->getDomains();
-    //DEBUG(dbgs() << "Dom@" << Dom << "\n");    
+    //DEBUG(dbgs() << "Dom@" << Dom << "\n");
 
 
     //DEBUG(dbgs() << "New?" << MemAcc->hasNewAccessRelation() << "\n");
@@ -1835,7 +1839,7 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
             OuterMin = AccessSet.dim_min(IndexAccMap);
             OuterMax = AccessSet.dim_max(IndexAccMap);
             OuterMax = OuterMax.sub(OuterMin);
-            /// if we match the dimension we also 
+            /// if we match the dimension we also
             /// record the (relative) loop order.
             LoopOrder.push_back(LoopDim);
 
@@ -1843,8 +1847,8 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
             OuterMax.foreach_piece([&](isl::set S, isl::aff Aff) -> isl::stat {
               isl::val Val = Aff.get_constant_val();
               ElementAccessed.push_back(Val);
-              //DEBUG(dbgs() << "Constant@ := " << Aff.get_constant_val().to_str() << "\n");
-              return isl::stat::ok;
+              //DEBUG(dbgs() << "Constant@ := " <<
+Aff.get_constant_val().to_str() << "\n"); return isl::stat::ok;
             });
             IndexAccMap++;
           }
@@ -1857,9 +1861,9 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
             isl::pw_aff OuterMin = AccessSet.dim_min(IndexAccMap);
             DEBUG(dbgs() << "OuterMin:= " << OuterMin << "\n");
             isl::pw_aff OuterMax = AccessSet.dim_max(IndexAccMap);
-            DEBUG(dbgs() << "OuterMax:= " << OuterMax << "\n"); 
-            isl::local_space Ls = isl::local_space(AccessSet.get_space().params());
-            isl::aff One = isl::aff(Ls);
+            DEBUG(dbgs() << "OuterMax:= " << OuterMax << "\n");
+            isl::local_space Ls =
+isl::local_space(AccessSet.get_space().params()); isl::aff One = isl::aff(Ls);
             One = One.add_constant_si(1);
             isl::pw_aff OnePw = isl::pw_aff(One);
             /// if we match the dimension we also record the loop order.
@@ -1876,113 +1880,114 @@ static void getElementAccessed(MemoryAccess *MemAcc, isl::map &Sched,
           /// In case the schedule dimension does not relate
           /// to a dimension of the memory location the number of
           /// elements accessed is equal to zero.
-          
+
           if(V.is_zero()) {
           }
-          
-          
+
+
         }
         return isl::stat::ok;
       });
     }
-} 
+}
 */
 
 static bool accessSingleElement(std::vector<isl::val> &E) {
   bool isElement = true;
   std::vector<isl::val>::iterator it = E.begin();
-  while(it !=E.end()) {
-    if(!it->is_one())
+  while (it != E.end()) {
+    if (!it->is_one())
       isElement = false;
     it++;
-  } 
+  }
   return isElement;
 }
 
-static void extractSpecies(std::vector<Reference> &R/*, int LoopLevel*/) {
+static void extractSpecies(std::vector<Reference> &R /*, int LoopLevel*/) {
   assert(!R.empty() && "Structure is empty");
   std::vector<Reference>::iterator it = R.begin();
-  while(it != R.end()) {
-    if(!it->HasStride[0] && it->AccessType==1) {
-      //DEBUG(dbgs() << it->Step[0].is_zero() << "\n");
+  while (it != R.end()) {
+    if (!it->HasStride[0] && it->AccessType == 1) {
+      // DEBUG(dbgs() << it->Step[0].is_zero() << "\n");
       it->Type = Reference::FULL;
-      //DEBUG(dbgs() << "[ " << it->Name << " ]" << " FULL " << "\n");
-    }
-    else if (!it->HasStride[0] && it->AccessType==2) {
-      //DEBUG(dbgs() << it->Step[0].is_zero() << "\n");
+      // DEBUG(dbgs() << "[ " << it->Name << " ]" << " FULL " << "\n");
+    } else if (!it->HasStride[0] && it->AccessType == 2) {
+      // DEBUG(dbgs() << it->Step[0].is_zero() << "\n");
       it->Type = Reference::SHARED;
-      //DEBUG(dbgs() << "[ " << it->Name << " ]" << " SHARED " << "\n");
+      // DEBUG(dbgs() << "[ " << it->Name << " ]" << " SHARED " << "\n");
     }
 
     else if (accessSingleElement(it->ElementAccessed)) {
       it->Type = Reference::SINGLE_ELEMENT;
-      //DEBUG(dbgs() << "[ " << it->Name << " ]" << " ELEMENT " << "\n");
+      // DEBUG(dbgs() << "[ " << it->Name << " ]" << " ELEMENT " << "\n");
     }
 
     else {
       it->Type = Reference::CHUNK;
-      //DEBUG(dbgs() << "[ " << it->Name << " ]" << " CHUNK " << "\n");
+      // DEBUG(dbgs() << "[ " << it->Name << " ]" << " CHUNK " << "\n");
     }
-  it++;
+    it++;
   }
-
 }
 
 static std::string getTypeAsString(int Index) {
-  switch(Index) {
-    case 0:
-      return "SINGLE_ELEMENT";
-    case 1:
-      return "CHUNK";
-    case 2:
-      return "NEIGHBOURHOOD";
-    case 3:
-      return "FULL";
-    case 4:
-      return "SHARED";
-    default:
-      return "ND";
+  switch (Index) {
+  case 0:
+    return "SINGLE_ELEMENT";
+  case 1:
+    return "CHUNK";
+  case 2:
+    return "NEIGHBOURHOOD";
+  case 3:
+    return "FULL";
+  case 4:
+    return "SHARED";
+  default:
+    return "ND";
   }
 }
 
-static void printStructure(std::vector<Reference> &R) {
+static void printStructure(std::vector<Reference> &R, const char *StmtBaseName) {
   assert(!R.empty() && "Structure is empty");
-  //DEBUG(dbgs() << R.size() << "\n");
+  // DEBUG(dbgs() << R.size() << "\n");
+  DEBUG(dbgs() << "Stmt Name := " << StmtBaseName << "\n");
   std::vector<Reference>::iterator it = R.begin();
-  while(it != R.end()) {
-    if(it->AccessType == 2)
-      DEBUG(dbgs() << "[" << it->Name << " " << getTypeAsString(it->Type) << "]" << " -> ");
+  while (it != R.end()) {
+    if (it->AccessType == 2)
+      DEBUG(dbgs() << "[" << it->Name << " " << getTypeAsString(it->Type) << "]"
+                   << " -> ");
     it++;
   }
   it = R.begin();
-  while(it != R.end()) {
-    if(it->AccessType != 2)
-      DEBUG(dbgs() << "[" << it->Name << " " << getTypeAsString(it->Type) << "]");
+  while (it != R.end()) {
+    if (it->AccessType != 2)
+      DEBUG(dbgs() << "[" << it->Name << " " << getTypeAsString(it->Type)
+                   << "]");
     it++;
   }
   DEBUG(dbgs() << "\n");
-  while(!R.empty()) {
+  while (!R.empty()) {
     Reference RR = R.back();
     DEBUG(dbgs() << "AccessType@: " << RR.AccessType << "\n");
     DEBUG(dbgs() << "Name@: " << RR.Name << "\n");
     DEBUG(dbgs() << "Domain@: " << RR.Domain << "\n");
     DEBUG(dbgs() << "ElementAccessed for each outer loop iteration :=");
-    while(!RR.ElementAccessed.empty()) {
+    while (!RR.ElementAccessed.empty()) {
       isl::val Val = RR.ElementAccessed.front();
-      DEBUG(dbgs() << "[" << Val.to_str() << "]"); 
+      DEBUG(dbgs() << "[" << Val.to_str() << "]");
       RR.ElementAccessed.erase(RR.ElementAccessed.begin());
     }
     DEBUG(dbgs() << "\n");
     DEBUG(dbgs() << "StrideOnDimension :=");
-    while(!RR.HasStride.empty()) {
+    while (!RR.HasStride.empty()) {
       bool Val = RR.HasStride.front();
       DEBUG(dbgs() << "[" << Val << "]");
       RR.HasStride.erase(RR.HasStride.begin());
     }
     DEBUG(dbgs() << "\n");
     DEBUG(dbgs() << "Partial loop order :=");
-    while(!RR.LoopOrder.empty()) {
-      DEBUG(dbgs()  << "[" << RR.LoopOrder.front() << "]");
+    while (!RR.LoopOrder.empty()) {
+      DEBUG(dbgs() << "[" << RR.LoopOrder.front() << "]");
       RR.LoopOrder.erase(RR.LoopOrder.begin());
     }
     DEBUG(dbgs() << "\n");
@@ -1991,7 +1996,8 @@ static void printStructure(std::vector<Reference> &R) {
 }
 
 // GSOC
-static void classifyReference(ScopStmt &Stmt) {
+static void classifyReference(ScopStmt &Stmt,
+                              std::vector<Reference> &References) {
 
   DEBUG(dbgs() << "@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
   Stmt.dump();
@@ -2003,113 +2009,164 @@ static void classifyReference(ScopStmt &Stmt) {
   isl::set Domain = Stmt.getDomain();
   DEBUG(dbgs() << "Domain" << Domain << "\n");
   DEBUG(dbgs() << StmtSchedule.intersect_domain(Domain).coalesce() << "\n");
-  //DEBUG(dbgs() << StmtSchedule.range() << "\n");
-  //isl::set setRange = StmtSchedule.range();
-  //setRange.foreach_basic_set([&](isl::basic_set BSet) -> isl::stat {
-    //DEBUG(dbgs() << "Bset" << BSet << "\n");
-    //return isl::stat::ok;
+  DEBUG(dbgs() << "Base Name: " << Stmt.getBaseName() << "\n");
+  // DEBUG(dbgs() << StmtSchedule.range() << "\n");
+  // isl::set setRange = StmtSchedule.range();
+  // setRange.foreach_basic_set([&](isl::basic_set BSet) -> isl::stat {
+  // DEBUG(dbgs() << "Bset" << BSet << "\n");
+  // return isl::stat::ok;
   //});
   DEBUG(dbgs() << "@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
 
-  //try to find loop order.
-/*
-  Loop *l = Stmt.getSurroundingLoop();
-  l->dumpVerbose();
-  Scop *S = Stmt.getParent();
-  isl::union_map Schedule = Schedule.empty(S->getParamSpace());
-  int CurrDim = Stmt.getParent()->getRelativeLoopDepth(l);
-  DEBUG(dbgs() << "Relative Loop Depth: " << CurrDim << "\n");
-  for( auto &SS : *S) {
-    if(l->contains(SS.getSurroundingLoop())) {
-      unsigned int MaxDim = SS.getNumIterators();
-      DEBUG(dbgs() << "MaxDim :=" << MaxDim << "\n");
-      isl::map ScheduleMap = SS.getSchedule();
-      ScheduleMap = ScheduleMap.project_out(isl::dim::out, CurrDim+1, MaxDim-CurrDim-1);
-      ScheduleMap = ScheduleMap.set_tuple_id(isl::dim::in, SS.getDomainId());
-      Schedule = Schedule.unite(isl::union_map(ScheduleMap));
+  // try to find loop order.
+  /*
+    Loop *l = Stmt.getSurroundingLoop();
+    l->dumpVerbose();
+    Scop *S = Stmt.getParent();
+    isl::union_map Schedule = Schedule.empty(S->getParamSpace());
+    int CurrDim = Stmt.getParent()->getRelativeLoopDepth(l);
+    DEBUG(dbgs() << "Relative Loop Depth: " << CurrDim << "\n");
+    for( auto &SS : *S) {
+      if(l->contains(SS.getSurroundingLoop())) {
+        unsigned int MaxDim = SS.getNumIterators();
+        DEBUG(dbgs() << "MaxDim :=" << MaxDim << "\n");
+        isl::map ScheduleMap = SS.getSchedule();
+        ScheduleMap = ScheduleMap.project_out(isl::dim::out, CurrDim+1,
+    MaxDim-CurrDim-1); ScheduleMap = ScheduleMap.set_tuple_id(isl::dim::in,
+    SS.getDomainId()); Schedule = Schedule.unite(isl::union_map(ScheduleMap));
+      }
     }
-  }
-  Schedule = Schedule.coalesce();
-  DEBUG(dbgs() << "Schedule :=" << Schedule << "\n");
-*/
- 
+    Schedule = Schedule.coalesce();
+    DEBUG(dbgs() << "Schedule :=" << Schedule << "\n");
+  */
+
   auto Accesses = getAccessesInOrder(Stmt);
- 
-   /// Used to populate References.
+
+  /// Used to populate References.
   int Index = 0;
 
   for (auto *MemA = Accesses.begin(); MemA != Accesses.end(); MemA++) {
 
     auto *MemAccessPtr = *MemA;
 
-    if(MemAccessPtr->isMemoryIntrinsic()) {
-      DEBUG(dbgs() << "intrinsic access (memcpy, memset, memmove) " << "\n");
+    if (MemAccessPtr->isMemoryIntrinsic()) {
+      DEBUG(dbgs() << "intrinsic access (memcpy, memset, memmove) "
+                   << "\n");
       continue;
     }
 
-/*
-    enum MemoryKind MK = MemAccessPtr->getOriginalKind();      
-    if(MK == MemoryKind::Array) {
-      DEBUG(dbgs() << "Array kind\n");
-      DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
-    }
-    if(MK == MemoryKind::Value) {
-      DEBUG(dbgs() << "Value kind\n");
-      DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
-    }
-    if(MK == MemoryKind::PHI) {
-      DEBUG(dbgs() << "PHI kind\n");
-      DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
-      auto PHI = cast<PHINode>(MemAccessPtr->getAccessInstruction());
-      PHI->dump();
-    }
-    if(MK == MemoryKind::ExitPHI) {
-      DEBUG(dbgs() << "Exit kind\n");
-      DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
-    }
-*/
+    /*
+        enum MemoryKind MK = MemAccessPtr->getOriginalKind();
+        if(MK == MemoryKind::Array) {
+          DEBUG(dbgs() << "Array kind\n");
+          DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
+        }
+        if(MK == MemoryKind::Value) {
+          DEBUG(dbgs() << "Value kind\n");
+          DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
+        }
+        if(MK == MemoryKind::PHI) {
+          DEBUG(dbgs() << "PHI kind\n");
+          DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
+          auto PHI = cast<PHINode>(MemAccessPtr->getAccessInstruction());
+          PHI->dump();
+        }
+        if(MK == MemoryKind::ExitPHI) {
+          DEBUG(dbgs() << "Exit kind\n");
+          DEBUG(dbgs() << MemAccessPtr->getOriginalBaseAddr() << "\n");
+        }
+    */
 
-   enum MemoryKind MK = MemAccessPtr->getOriginalKind();
-   if(MK != MemoryKind::Array)
-     continue;
+    enum MemoryKind MK = MemAccessPtr->getOriginalKind();
+    if (MK != MemoryKind::Array)
+      continue;
 
-   /// 5-tuples classification.
-    
-   References.push_back(Reference());
-    
-   /// get access type. required by the classification.
-   References[Index].AccessType = MemAccessPtr->getType();
-   //DEBUG(dbgs() << "AccessType@ :=" << References[Index].AccessType << "\n");
-   /// get array name. required by the classification.
-   References[Index].Name =  MemAccessPtr->getLatestScopArrayInfo()->getName();
-   //DEBUG(dbgs() << "Name@ :=" << References[Index].Name << "\n");
+    /// 5-tuples classification.
 
-   //unsigned LoopLevel = 0;
-   getDomain(MemAccessPtr, References[Index].Domain);
-   isl::map ScheduleMap = Stmt.getSchedule();
-   getElementAccessed(MemAccessPtr, ScheduleMap, /*LoopLevel,*/
-        References[Index].Domain, References[Index].ElementAccessed, 
-        References[Index].LoopOrder);
-   getStep(MemAccessPtr, ScheduleMap, /*LoopLevel,*/ References[Index].HasStride);
-   Index++;
+    References.push_back(Reference());
+
+    /// get access type. required by the classification.
+    References[Index].AccessType = MemAccessPtr->getType();
+    // DEBUG(dbgs() << "AccessType@ :=" << References[Index].AccessType <<
+    // "\n");
+    /// get array name. required by the classification.
+    References[Index].Name = MemAccessPtr->getLatestScopArrayInfo()->getName();
+    // DEBUG(dbgs() << "Name@ :=" << References[Index].Name << "\n");
+
+    // unsigned LoopLevel = 0;
+    getDomain(MemAccessPtr, References[Index].Domain);
+    isl::map ScheduleMap = Stmt.getSchedule();
+    getElementAccessed(MemAccessPtr, ScheduleMap, /*LoopLevel,*/
+                       References[Index].Domain,
+                       References[Index].ElementAccessed,
+                       References[Index].LoopOrder);
+    getStep(MemAccessPtr, ScheduleMap,
+            /*LoopLevel,*/ References[Index].HasStride);
+    Index++;
   }
 }
+
+static bool checkForStreamingAccesses(const std::vector<Reference> &References) {
+
+  for(auto it = References.begin(); it != References.end(); it++) {
+    if(it->Type != Reference::CHUNK && it->Type != Reference::SINGLE_ELEMENT)
+      return false;
+  }
+ 
+  assert(References.size() != 1);
+ 
+  for(std::size_t i = 1; i < References.size(); ++i) {
+    if(!std::equal(References[0].LoopOrder.begin(),References[0].LoopOrder.end(),
+             References[i].LoopOrder.begin()))
+      return false;
+  }
+  
+  return true;
+
+}
+
+/// Is a streaming kernel?
+/// 1. The skeleton should look like: CHUNK -> CHUNK or ELEMENT -> ELEMENT.
+/// 2. The partial index order should be the same.
+/// 3. TODO:It shoudl have a stride in the innermost dimension.
+/// 4. TODO: Dependencies?
+
+static bool isStreaming(isl::schedule_node Node, const std::vector<Skeleton> &SK) {
+  isl::union_map PartialSchedule = isl::manage(
+    isl_schedule_node_band_get_partial_schedule_union_map(Node.get()));
+  if(PartialSchedule.n_map() != 1)
+    return false;
+  isl::map NewPartialSchedule = isl::map::from_union_map(PartialSchedule);
+  isl::id InputDimsId = NewPartialSchedule.get_tuple_id(isl::dim::in);
+  ScopStmt *Stmt = static_cast<ScopStmt *>(InputDimsId.get_user());
+  bool Streaming = false;
+  std::vector<Skeleton>::const_iterator it = SK.begin();
+  for(; it != SK.end(); it++) {
+    if(strcmp(it->StmtBaseName, Stmt->getBaseName()) != 0)
+      continue;
+    if(checkForStreamingAccesses(it->References))
+      Streaming = true;
+  } 
+  return Streaming;
+}
+
 
 __isl_give isl_schedule_node *
 ScheduleTreeOptimizer::optimizeBand(__isl_take isl_schedule_node *Node,
                                     void *User) {
-  
-  //classifyBand(isl::manage_copy(Node));
-  
+
+  // classifyBand(isl::manage_copy(Node));
+
   if (!isTileableBandNode(isl::manage_copy(Node)))
     return Node;
 
-  // gsoc//
-  //if (!isWorthTiling(isl::manage_copy(Node)))
-  //  return Node;
-
   const OptimizerAdditionalInfoTy *OAI =
-      static_cast<const OptimizerAdditionalInfoTy *>(User);
+    static_cast<const OptimizerAdditionalInfoTy *>(User);
+
+  if(isStreaming(isl::manage_copy(Node), OAI->Skeletons)) {
+    DEBUG(dbgs() << "Streaming\n");
+    return Node;
+  }
 
   MatMulInfoTy MMI;
   if (PMBasedOpts && User &&
@@ -2206,41 +2263,47 @@ static bool containOnlyReads(ScopStmt &Stmt) {
   return OnlyReads;
 }
 */
-    
 
 /// Check Stmt profittability.
 /// TODO; Skip initialization Stmt.
 /// Counting the number of memory references/instructions
 /// executed is a good metrics?
 static bool isProfitableStmt(ScopStmt &Stmt) {
-  
-  if(Stmt.isEmpty()) {
-    DEBUG(dbgs() << "Profitability: Empty Stmt" << "\n");
+
+  if (Stmt.isEmpty()) {
+    DEBUG(dbgs() << "Profitability: Empty Stmt"
+                 << "\n");
     return false;
   }
 
-  /// TODO: find a better profitability check. 
-  /// maybe it is better to count the number of instructions (i.e. load/store). 
-  if(getAccessesInOrder(Stmt).size() <= 2) {
-    DEBUG(dbgs() << "Profitability: Few Mem. references" << "\n");
+  /// TODO: find a better profitability check.
+  /// maybe it is better to count the number of instructions (i.e. load/store).
+  if (getAccessesInOrder(Stmt).size() <= 2) {
+    DEBUG(dbgs() << "Profitability: Few Mem. references"
+                 << "\n");
     return false;
   }
 
-  DEBUG(dbgs() << "Profitability: Stmt is profitable" << "\n");
+  DEBUG(dbgs() << "Profitability: Stmt is profitable"
+               << "\n");
   return true;
 }
 
 /// Collect the statments for the classification.
-static void collectStmtForClassification(Scop &S) {
+static void collectStmtForClassification(Scop &S, std::vector<Skeleton> &SK) {
+  int Index = 0;
   for (auto &Stmt : S) {
-    if(isProfitableStmt(Stmt)) {
-      classifyReference(Stmt);
-      extractSpecies(References);
-      printStructure(References);
+    if (isProfitableStmt(Stmt)) {
+      SK.push_back(Skeleton());
+      SK[Index].StmtBaseName = Stmt.getBaseName(); 
+      classifyReference(Stmt, SK[Index].References);
+      extractSpecies(SK[Index].References);
+      //printStructure(SK[Index].References, SK[Index].StmtBaseName);
+      Index++;
+    } else {
+      DEBUG(dbgs() << "Skip Stmt"
+                   << "\n");
     }
-    else {
-      DEBUG(dbgs() << "Skip Stmt" << "\n");
-    } 
   }
 }
 
@@ -2257,27 +2320,27 @@ static void walkScheduleTreeForClassification(isl::schedule Schedule) {
 
       auto FilterSequence = isl_schedule_node_get_type(Node.get());
       if(FilterSequence == isl_schedule_node_sequence)
-        DEBUG(dbgs() << isl_schedule_node_n_children(Node.get()) << "\n"); 
+        DEBUG(dbgs() << isl_schedule_node_n_children(Node.get()) << "\n");
 
 
       auto BandNode = isl_schedule_node_get_type(Node.get());
       if(BandNode == isl_schedule_node_band) {
         DEBUG(dbgs() << "classify" << "\n");
-        
+
         classifyReference(Node);
         //extractSpecies(References);
         printStructure(References);
         assert(References.empty());
         //return isl_bool_true;
-      }  
-     
+      }
+
       else {
-        DEBUG(dbgs() << "Continue due to Other Node\n");  
+        DEBUG(dbgs() << "Continue due to Other Node\n");
         //return isl_bool_true;
       }
-      
+
      return isl_bool_true;
-  }, 
+  },
   nullptr);
 }
 */
@@ -2486,15 +2549,24 @@ bool IslScheduleOptimizer::runOnScop(Scop &S) {
   });
 
   /*GSOC*/
-  collectStmtForClassification(S);
-  //walkScheduleTreeForClassification(Schedule); 
-  DEBUG(dbgs() << "END walkScheduleTreForClassificaition\n");
+  //Skeletons SK = {std::vector<Skeleton>(),const_cast<Dependences *>(&D)};
+  //collectStmtForClassification(S, SK);
+  //isl::union_map DWAR = D.getDependences(Dependences::TYPE_WAW);
+  // DEBUG(dbgs() << DWAR << "\n");
+  // walkScheduleTreeForClassification(Schedule);
+  // DEBUG(dbgs() << "END walkScheduleTreForClassificaition\n");
 
   Function &F = S.getFunction();
   auto *TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
-  const OptimizerAdditionalInfoTy OAI = {TTI, const_cast<Dependences *>(&D)};
+  std::vector<Skeleton> Skeletons = std::vector<Skeleton>();
+  collectStmtForClassification(S, Skeletons);
+ 
+  const OptimizerAdditionalInfoTy OAI = {TTI, const_cast<Dependences *>(&D), Skeletons};
   auto NewSchedule = ScheduleTreeOptimizer::optimizeSchedule(Schedule, &OAI);
   walkScheduleTreeForStatistics(NewSchedule, 2);
+
+  for(std::size_t i = 0; i != Skeletons.size(); ++i)
+    printStructure(Skeletons[i].References, Skeletons[i].StmtBaseName);
 
   if (!ScheduleTreeOptimizer::isProfitableSchedule(S, NewSchedule))
     return false;
